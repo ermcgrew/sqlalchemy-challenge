@@ -2,6 +2,7 @@
 from flask import Flask, jsonify
 
 import numpy as np
+import datetime as dt
 
 import sqlalchemy
 from sqlalchemy.ext.automap import automap_base
@@ -66,12 +67,22 @@ def stations():
 
 @app.route("/api/v1.0/tobs")
 def temp():
-    return
-        #Query the dates and temperature observations of the 
-        # most active station for the last year of data.
-        # Return a JSON list of temperature observations 
-        # (TOBS) for the previous year.
+    session = Session(engine)
+    #Query the dates and temperature observations of the most active station for the last year of data.
+    oneyearago = dt.date(2017,8,23) - dt.timedelta(days=365) #max(Measurement.date)
 
+    # busy_station = session.query(Measurement.station, func.count(Measurement.prcp)).\
+    #     group_by(Measurement.station).order_by(func.count(Measurement.prcp).desc()).first()
+
+    results = session.query(Measurement.tobs).filter(Measurement.station == 'USC00519281').\
+        filter(Measurement.date >= oneyearago).group_by(Measurement.date).all()
+    
+    session.close()
+
+    temp_list = list(np.ravel(results))
+
+    # Return a JSON list of temperature observations (TOBS) for the previous year. 
+    return jsonify(temp_list)
 
 @app.route("/api/v1.0/<start>")
 def startonly():
