@@ -1,24 +1,68 @@
+#Imports
 from flask import Flask, jsonify
 
+import numpy as np
+
+import sqlalchemy
+from sqlalchemy.ext.automap import automap_base
+from sqlalchemy.orm import Session
+from sqlalchemy import create_engine, func
+
+#connect to database
+engine = create_engine("sqlite:///Resources/hawaii.sqlite")
+
+#reflect tables as classes and save references
+Base = automap_base()
+Base.prepare(engine, reflect=True)
+Measurement = Base.classes.measurement
+Station = Base.classes.station
+
+#Flask setup
 app = Flask(__name__)
 
+#Flask routes
 @app.route("/")
 def Home():
-    return "list of all routes"
+    return(
+    f"Welcome to the Hawaii Weather API!<br/>"
+    f"Available routes are:<br/>"
+    f"/api/v1.0/precipitation<br/>"
+    f"/api/v1.0/stations<br/>"
+    f"/api/v1.0/tobs<br/>"
+    f"/api/v1.0/<start><br/>"
+    f"/api/v1.0/<start>/<end><br/>"
+    ) 
 
 
 @app.route("/api/v1.0/precipitation")
 def precip():
-    return
-        #Convert the query results to a dictionary 
-        #using date as the key and prcp as the value.
-        #Return the JSON representation of your dictionary
+    #connect to db, query, and close connection
+    session = Session(engine)
+    results = session.query(Measurement.date, Measurement.prcp).group_by(Measurement.date).all()
+    session.close()
+    
+    #Convert the query results to a dictionary using date as the key and prcp as the value.
+    precip = []
+    for date, prcp in results:
+        day_dict = {}
+        day_dict["Date"] = date
+        day_dict["Precipitation"] = prcp
+        precip.append(day_dict)
+
+    #Return JSON representation
+    return jsonify(precip)
 
 @app.route("/api/v1.0/stations")
 def stations():
-    return
-        #Return a JSON list of stations from the dataset
+    #connect to db, query, and close connection
+    session = Session(engine)
+    results = session.query(Station.station).all()
+    session.close()
+    
+    station_list = list(np.ravel(results))
 
+    #Return a JSON list of stations from the dataset
+    return jsonify(station_list)
 
 @app.route("/api/v1.0/tobs")
 def temp():
