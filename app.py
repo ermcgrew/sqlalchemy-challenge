@@ -92,31 +92,60 @@ def temp():
 #Temperature MIN, AVG, and MAX for all dates >= to the start date.
 @app.route("/api/v1.0/<start>")
 def startonly(start):   
-    #connect to db, query, and close connection
-    session = Session(engine)
-    results = session.query(func.min(Measurement.tobs),func.max(Measurement.tobs), func.avg(Measurement.tobs)).\
-        filter(Measurement.date >= start).first()
-    session.close()
     
-    #convert query result to list
-    temp_stats = list(np.ravel(results))
-    #Return a JSON list
-    return jsonify(temp_stats)
+    #open session, check for start date in database, close session
+    session = Session(engine)
+    query_list_test = session.query(Measurement.date).filter(Measurement.date == start).all()
+    session.close()
+
+    #if the query_list is empty/False(start date not in database), give user error message 
+    #implicit booleanness of lists from https://stackoverflow.com/a/53522/16708900
+    if  not query_list_test:
+        return jsonify({"error": f"Invalid date {start} provided. Use YYYY-MM-DD format"})
+        
+   #if list is populated/True (start date is in database), proceed with query 
+    elif query_list_test:
+        #connect to db, query, and close connection
+        session = Session(engine)
+        results = session.query(func.min(Measurement.tobs),func.max(Measurement.tobs), func.avg(Measurement.tobs)).\
+            filter(Measurement.date >= start).first()
+        session.close()
+
+        #convert query result to list
+        temp_stats = list(np.ravel(results))
+        #Return a JSON list
+        return jsonify(temp_stats)
 
 
 #Temperature MIN, AVG, and MAX for dates between the start and end date inclusive.
 @app.route("/api/v1.0/<start>/<end>")
 def startend(start, end):
-    #connect to db, query, and close connection
+    #open session, check for start date in database, close session
     session = Session(engine)
-    results = session.query(func.min(Measurement.tobs),func.max(Measurement.tobs), func.avg(Measurement.tobs)).\
-        filter(Measurement.date >= start).filter(Measurement.date <= end).first()
+    query_start_test = session.query(Measurement.date).filter(Measurement.date == start).all()
+    query_end_test = session.query(Measurement.date).filter(Measurement.date == end).all()
     session.close()
 
-    #convert query result to list
-    temp_stats = list(np.ravel(results))
-    #Return a JSON list
-    return jsonify(temp_stats)
+    #if either lists are empty/False(dates not in database), give user error message 
+    #implicit booleanness of lists from https://stackoverflow.com/a/53522/16708900
+    if not query_start_test:
+        return jsonify({"error": f"Invalid date {start} provided. Use YYYY-MM-DD format"})
+
+    elif not query_end_test:
+        return jsonify({"error": f"Invalid date {end} provided. Use YYYY-MM-DD format"})
+
+    #if list is populated/True (both dates in database), proceed with query 
+    elif query_start_test and query_end_test:
+        #connect to db, query, and close connection
+        session = Session(engine)
+        results = session.query(func.min(Measurement.tobs),func.max(Measurement.tobs), func.avg(Measurement.tobs)).\
+            filter(Measurement.date >= start).filter(Measurement.date <= end).first()
+        session.close()
+
+        #convert query result to list
+        temp_stats = list(np.ravel(results))
+        #Return a JSON list
+        return jsonify(temp_stats)
 
 
 if __name__ == "__main__":
